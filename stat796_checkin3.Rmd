@@ -1,0 +1,120 @@
+---
+title: "Stat 796 Check-in 3"
+author: "Heidi Rogers"
+date: "2024-02-19"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(psych)
+library(rotations)
+library(abind)
+```
+
+```{r}
+load("checkin3.RData")
+
+# 3x3x50 arrays
+a <- A
+b <- B
+```
+
+```{r}
+### function to find the mean matrix from an array of matrices input as "array"
+find_mean_matrix <- function(array){
+  n <- dim(array)[3] # number of 3x3 matrices in the array
+  matrix_sum <- matrix(0,nrow=3,ncol=3) # initialize a blank matrix
+  
+  for(i in 1:n){ # for each matrix in the array
+    current_matrix <- array[,,i]
+    matrix_sum <- matrix_sum + current_matrix # add all matrices together
+  }
+  O_bar <- matrix_sum / n # find average by diving by total # of matrices
+  mean_matrix <- svd(O_bar)$u %*% t(svd(O_bar)$v) # single value decomposition
+  return(mean_matrix) # return the mean matrix
+}
+find_mean_matrix(a)
+```
+
+```{r}
+### function to find average misorientation angle with array of matrices input as "array"
+find_ama <- function(array){
+  mean_mat <- find_mean_matrix(array) # call previous mean matrix function
+  n <- dim(array)[3] # number of 3x3 matrices in the array
+  ma_sum <- 0 # initialize total sum of misorientation angles
+  
+  for(i in 1:n){ # loop through each matrix in the array
+    current_matrix <- array[,,i]
+    # misorientation angle for current matrix
+    ma_i <- acos( ( tr( t(current_matrix) %*% mean_mat ) - 1 ) / 2 )
+    ma_sum <- ma_sum + ma_i # sum all misorientation angles
+  }
+  ama <- ma_sum / n # divide sum by total number to get average 
+  return(ama)
+}
+```
+
+```{r}
+
+Dobs <- find_ama(a) - find_ama(b) ## observed difference in sample AMAs 
+
+n1 <- dim(a)[3] 
+n2 <- dim(b)[3] 
+N <- n1 + n2
+alldata <- abind(a,b)
+
+nperms = 1000
+Dperm <- c()
+
+for(i in 1:nperms){  ## permutations
+  
+  index = sample(1:N, n1)  ## random samples of the data
+  
+  data1 = alldata[,,index]  ## permuted groups
+  data2 = alldata[,,-index]
+  
+  Dperm[i] <- find_ama(data1) - find_ama(data2)  ## permuted statistic
+}
+
+pvalue <- sum(abs(Dperm) >= abs(Dobs))/nperms  ## two-tailed p-value
+```
+
+```{r}
+set.seed(17)
+
+# observed difference in sample AMAs between samples A and B
+Dobs <- find_ama(a) - find_ama(b)
+
+# specify lengths of arrays
+n1 <- dim(a)[3] 
+n2 <- dim(b)[3] 
+N <- n1 + n2 # total number of matrices 
+#comibine data
+alldata <- abind(a,b)
+
+# specify number of permutations
+nperms = 1000
+# empty vector for permutation test stats to be stored
+Dperm <- c()
+
+# loop for 1000 permutations
+for(i in 1:nperms){ 
+  # random samples of the data
+  index = sample(1:N, n1)
+  
+  # permuted groups
+  data1 = alldata[,,index]
+  data2 = alldata[,,-index]
+  
+  # calculate difference in AMAs
+  Dperm[i] <- find_ama(data1) - find_ama(data2)
+}
+
+# two-tailed p-value
+pvalue <- sum(abs(Dperm) >= abs(Dobs))/nperms
+pvalue # .008
+```
