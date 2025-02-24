@@ -1,0 +1,119 @@
+---
+title: "Stat 796 Check-in 4 Graphs"
+author: "Heidi Rogers"
+date: "2024-04-04"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mgcv)
+```
+
+### Graph 1, k1=5
+
+```{r, warning=FALSE, message=FALSE}
+
+# read data
+power_k1_5 <- read.table("power_k1_5")
+kdiffs <- seq(0, 500, by=20)
+
+# plot 
+plot(x = kdiffs, xlim=c(0,500), ylim=c(0,1), 
+     ylab = "Power", xlab = "K2 - K1 (distance between population spreads)", 
+     main = "Power of Permutation Testing for \nDifference in AMAs, K1 = 5") 
+
+# add smooth lines
+smooth_line_1 <- smooth.spline(kdiffs, as.numeric(power_k1_5[1,]))
+lines(smooth_line_1, col = "orange", lty = 1)
+
+smooth_line_2 <- smooth.spline(kdiffs, as.numeric(power_k1_5[2,]))
+lines(smooth_line_2, col = "deepskyblue3", lty = 2)
+
+smooth_line_3 <- smooth.spline(kdiffs, as.numeric(power_k1_5[3,]))
+lines(smooth_line_3, col = "red", lty = 3)
+
+legend(350, .35, lty=c(1,2,3), col=c("orange", "deepskyblue3", "red"), 
+       legend=c("n = 10", "n = 50", "n = 100"))
+```
+
+### Graph 2, k1=20
+
+```{r, warning=FALSE, message=FALSE}
+
+# read data
+power_k1_20 <- read.table("power_k1_20")
+
+# plot
+plot(x = kdiffs, xlim=c(0,500), ylim=c(0,1), 
+     ylab = "Power", xlab = "K2 - K1 (distance between population spreads)", 
+     main = "Power of Permutation Testing for \nDifference in AMAs, K1 = 20") 
+
+# add smooth lines
+smooth_line_1 <- smooth.spline(kdiffs, as.numeric(power_k1_20[1,]))
+lines(smooth_line_1, col = "orange", lty = 1)
+
+smooth_line_2 <- smooth.spline(kdiffs, as.numeric(power_k1_20[2,]))
+lines(smooth_line_2, col = "deepskyblue3", lty = 2)
+
+smooth_line_3 <- smooth.spline(kdiffs, as.numeric(power_k1_20[3,]))
+lines(smooth_line_3, col = "red", lty = 3)
+
+legend(350, .35, lty=c(1,2,3), col=c("orange","deepskyblue3", "red"), 
+       legend=c("n = 10", "n = 50", "n = 100"))
+```
+
+### Graph 3, k1=50
+
+```{r, warning=FALSE, message=FALSE}
+
+# read data
+power_k1_50 <- read.table("power_k1_50")
+
+# plot
+plot(x = kdiffs, xlim=c(0,500), ylim=c(0,1), 
+     ylab = "Power", xlab = "K2 - K1 (distance between population spreads)", 
+     main = "Power of Permutation Testing for \nDifference in AMAs, K1 = 50") 
+
+# add smooth lines
+smooth_line_1 <- smooth.spline(kdiffs, as.numeric(power_k1_50[1,]))
+lines(smooth_line_1, col = "orange", lty = 1)
+
+smooth_line_2 <- smooth.spline(kdiffs, as.numeric(power_k1_50[2,]))
+lines(smooth_line_2, col = "deepskyblue3", lty = 2)
+
+smooth_line_3 <- smooth.spline(kdiffs, as.numeric(power_k1_50[3,]))
+lines(smooth_line_3, col = "red", lty = 3)
+
+legend(350, .35, lty=c(1,2,3), col=c("orange", "deepskyblue3", "red"), 
+       legend=c("n = 10", "n = 50", "n = 100"))
+```
+
+### Graph 4, k1=100
+
+```{r, warning=FALSE, message=FALSE}
+
+# read data
+power_k1_100 <- read.table("power_k1_100")
+
+# plot
+plot(x = kdiffs, xlim=c(0,500), ylim=c(0,1), 
+     ylab = "Power", xlab = "K2 - K1 (distance between population spreads)", 
+     main = "Power of Permutation Testing for \nDifference in AMAs, K1 = 100") 
+
+# add smooth lines
+smooth_line_1 <- smooth.spline(kdiffs, as.numeric(power_k1_100[1,]))
+lines(smooth_line_1, col = "orange", lty = 1)
+
+smooth_line_2 <- smooth.spline(kdiffs, as.numeric(power_k1_100[2,]))
+lines(smooth_line_2, col = "deepskyblue3", lty = 2)
+
+smooth_line_3 <- smooth.spline(kdiffs, as.numeric(power_k1_100[3,]))
+lines(smooth_line_3, col = "red", lty = 3)
+
+legend(350, .35, lty=c(1,2,3), col=c("orange", "deepskyblue3","red"), 
+       legend=c("n = 10", "n = 50", "n = 100"))
+```
