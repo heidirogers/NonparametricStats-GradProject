@@ -1,0 +1,77 @@
+---
+title: "stat796 Check-in 1"
+author: "Heidi Rogers"
+output:
+  pdf_document: default
+  html_document: default
+date: "2024-01-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(psych)
+library(rotations)
+
+# read data
+generic_data <- read.csv("GenericData.csv")
+
+# exclude the 'observation' column
+data <- generic_data[,2:10]
+
+# array labels
+col_names <- c('X','Y','Z')
+row_names <- c(1,2,3)
+mat_names <- generic_data[,1]
+
+# 3x3x30 array
+myarray <- array(as.numeric(c(data[1,], data[2,], data[3,], data[4,], data[5,],
+                              data[6,], data[7,], data[8,], data[9,], data[10,],
+                              data[11,], data[12,], data[13,], data[14,], data[15,],
+                              data[16,], data[17,], data[18,], data[19,], data[20,],
+                              data[21,], data[22,], data[23,], data[24,], data[25,],
+                              data[26,], data[27,], data[28,], data[29,], data[30,])), 
+               dim = c(3, 3, 30),
+               dimnames = list(row_names, col_names, mat_names))
+
+
+### function to find the mean matrix from an array of matrices input as "array"
+find_matrix_mean <- function(array){
+  n <- dim(array)[3] # number of 3x3 matrices in the array
+  matrix_sum <- matrix(0,nrow=3,ncol=3) # initialize a blank matrix
+  
+  for(i in 1:n){ # for each matrix in the array
+    current_matrix <- array[,,i]
+    matrix_sum <- matrix_sum + current_matrix # add all matrices together
+  }
+  O_bar <- matrix_sum / n # find average by diving by total # of matrices
+  mean_matrix <- svd(O_bar)$u %*% t(svd(O_bar)$v) # single value decomposition
+  return(mean_matrix) # return the mean matrix
+}
+
+### function to find average misorientation angle with array of matrices input as "array"
+find_ama <- function(array){
+  mean_mat <- find_matrix_mean(array) # call previous mean matrix function
+  n <- dim(array)[3] # number of 3x3 matrices in the array
+  ma_sum <- 0 # initialize total sum of misorientation angles
+  
+  for(i in 1:n){ # loop through each matrix in the array
+    current_matrix <- array[,,i]
+    # misorientation angle for current matrix
+    ma_i <- acos( ( tr( t(current_matrix) %*% mean_mat ) - 1 ) / 2 )
+    ma_sum <- ma_sum + ma_i # sum all misorientation angles
+  }
+  ama <- ma_sum / n # divide sum by total number to get average 
+  return(ama)
+}
+```
+
+```{r}
+# mean matrix for the generic data
+find_matrix_mean(myarray)
+
+# average misorientation angle for generic data
+find_ama(myarray)
+```
