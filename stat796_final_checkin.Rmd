@@ -1,0 +1,281 @@
+---
+title: "stat796_final"
+author: "Heidi Rogers"
+date: "2024-04-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# 5 joints, 3 species: 5 comparisons for each 3 (15)
+# only 1 comparisons for the last joint --> 13 total comparisons
+library(psych)
+library(rotations)
+library(abind)
+```
+
+```{r}
+# load needed functions
+
+### this function find the mean matrix from an array of matrices input as "array"
+find_mean_matrix <- function(array){
+  n <- dim(array)[3] # number of 3x3 matrices in the array
+  matrix_sum <- matrix(0,nrow=3,ncol=3) # initialize a blank matrix
+  
+  for(i in 1:n){ # for each matrix in the array
+    current_matrix <- array[,,i]
+    matrix_sum <- matrix_sum + current_matrix # add all matrices together
+  }
+  O_bar <- matrix_sum / n # find average by diving by total # of matrices
+  mean_matrix <- svd(O_bar)$u %*% t(svd(O_bar)$v) # single value decomposition
+  return(mean_matrix) # return the mean matrix
+}
+
+### this function finds average misorientation angle with array of matrices input as "array"
+find_ama <- function(array){
+  mean_mat <- find_mean_matrix(array) # call previous mean matrix function
+  n <- dim(array)[3] # number of 3x3 matrices in the array
+  ma_sum <- 0 # initialize total sum of misorientation angles
+  
+  for(i in 1:n){ # loop through each matrix in the array
+    current_matrix <- array[,,i]
+    # misorientation angle for current matrix
+    ma_i <- acos( ( tr( t(current_matrix) %*% mean_mat ) - 1 ) / 2 )
+    ma_sum <- ma_sum + ma_i # sum all misorientation angles
+  }
+  ama <- ma_sum / n # divide sum by total number to get average 
+  return(ama)
+}
+```
+
+### matrix data
+
+```{r}
+# read data
+data <- read.csv("Data.csv")
+
+### rid of extra space in words
+library(stringr)
+data$Joint <- str_trim(data$Joint, side = "left")
+```
+
+```{r}
+### split data into different species
+human <- data[which(data$Species == "homo"),]
+baboon <- data[which(data$Species == "papio"),]
+chimp <- data[which(data$Species == "pan"),]
+
+### split data into joint groups for the different species, including only XYZ data
+
+# CubCal 
+h_cubcal <- as.matrix(human[which(human$Joint == "CubCal"), 4:12])
+b_cubcal <- as.matrix(baboon[which(baboon$Joint == "CubCal"), 4:12])
+c_cubcal <- as.matrix(chimp[which(chimp$Joint == "CubCal"), 4:12])
+
+# TalCal 
+h_talcal <- as.matrix(human[which(human$Joint == "TalCal"), 4:12])
+b_talcal <- as.matrix(baboon[which(baboon$Joint == "TalCal"), 4:12])
+c_talcal <- as.matrix(chimp[which(chimp$Joint == "TalCal"), 4:12])
+
+# NavCub 
+h_navcub <- as.matrix(human[which(human$Joint == "NavCub"), 4:12])
+b_navcub <- as.matrix(baboon[which(baboon$Joint == "NavCub"), 4:12])
+c_navcub <- as.matrix(chimp[which(chimp$Joint == "NavCub"), 4:12])
+
+# NavTal 
+h_navtal <- as.matrix(human[which(human$Joint == "NavTal"), 4:12])
+b_navtal <- as.matrix(baboon[which(baboon$Joint == "NavTal"), 4:12])
+c_navtal <- as.matrix(chimp[which(chimp$Joint == "NavTal"), 4:12])
+
+# Mt5CubAP
+h_mt5cubap <- as.matrix(human[which(human$Joint == "Mt5CubAP"), 4:12])
+c_mt5cubap <- as.matrix(chimp[which(chimp$Joint == "Mt5CubAP"), 4:12])
+```
+
+```{r}
+### Function to split an nx9 matrix into an array of 3x3 matrices
+### each row in the nx9 matrix is its own matrix where columns are X, Y, Z
+split_matrix <- function(df) {
+  # Determine the number of 3x3 matrices to create
+  num_matrices <- nrow(df)
+  
+  # Reshape the matrix into a 3D array of shape (3, 3, num_matrices)
+  mat_array <- array(dim = c(3, 3, num_matrices) )
+
+  for(r in 1:num_matrices){
+    mat <- matrix(df[r,], nrow=3)
+    mat_array[,,r] <- mat 
+  }
+  
+  return(mat_array)
+}
+
+### List of nx9 matrices
+data_frames <- list(h_cubcal, b_cubcal, c_cubcal,
+                    h_talcal, b_talcal, c_talcal,
+                    h_navcub, b_navcub, c_navcub,
+                    h_navtal, b_navtal, c_navtal,
+                    h_mt5cubap, c_mt5cubap)
+
+### Split each nx9 matrix into array of 3x3 matrices and store the result in a list
+split_matrices_list <- lapply(data_frames, split_matrix)
+```
+
+```{r}
+### assign matrix arrays to species/joint name
+### (humans=6, baboons=7, chimps=4)
+
+h_cubcal_ar <- split_matrices_list[[1]] 
+b_cubcal_ar <- split_matrices_list[[2]] 
+c_cubcal_ar <- split_matrices_list[[3]] 
+
+h_talcal_ar <- split_matrices_list[[4]]
+b_talcal_ar <- split_matrices_list[[5]]
+c_talcal_ar <- split_matrices_list[[6]]
+
+h_navcub_ar <- split_matrices_list[[7]]
+b_navcub_ar <- split_matrices_list[[8]]
+c_navcub_ar <- split_matrices_list[[9]]
+
+h_navtal_ar <- split_matrices_list[[10]]
+b_navtal_ar <- split_matrices_list[[11]]
+c_navtal_ar <- split_matrices_list[[12]]
+
+h_mt5cubap_ar <- split_matrices_list[[13]]
+c_mt5cubap_ar <- split_matrices_list[[14]]
+
+### create lists of matrix arrays for each species
+humans <- list(h_cubcal_ar, h_talcal_ar, h_navcub_ar, h_navtal_ar, h_mt5cubap_ar)
+chimps <- list(c_cubcal_ar, c_talcal_ar, c_navcub_ar, c_navtal_ar, c_mt5cubap_ar)
+baboons <- list(b_cubcal_ar, b_talcal_ar, b_navcub_ar, b_navtal_ar)
+```
+
+### human vs baboon
+
+```{r}
+set.seed(17)
+# specify number of permutations
+nperms =  1000
+# empty vector for permutation test stats to be stored
+Dperm <- c()
+# vector to store p-values for human and baboon comparisons
+hb_pvals <- c()
+
+for (i in 1:length(baboons)){
+    Dobs <- find_ama(humans[[i]]) - find_ama(baboons[[i]])
+    
+    # specify lengths of arrays
+    n1 <- dim(humans[[i]])[3] 
+    n2 <- dim(baboons[[i]])[3] 
+    N <- n1 + n2 # total number of matrices 
+    #comibine data
+    alldata <- abind(humans[[i]], baboons[[i]])
+    
+    for(j in 1:nperms){ 
+      # random samples of the data
+      index <- sample(1:N, n1)
+  
+      # permuted groups
+      data1 <- alldata[,,index]
+      data2 <- alldata[,,-index]
+  
+      # calculate difference in AMAs
+      Dperm[j] <- find_ama(data1) - find_ama(data2)
+    }
+    # two-tailed p-value
+    pvalue <- sum(abs(Dperm) >= abs(Dobs))/nperms
+    hb_pvals[i] <- pvalue 
+}
+
+# print p-values for the 4 comparisons
+# b_cubcal_ar, b_talcal_ar, b_navcub_ar, b_navtal_ar
+hb_pvals
+```
+
+### human vs chimp
+
+```{r}
+set.seed(17)
+# specify number of permutations
+nperms =  1000
+# empty vector for permutation test stats to be stored
+Dperm <- c()
+# vector to store p-values for human and chimp comparisons
+hc_pvals <- c()
+
+for (i in 1:length(humans)){
+    Dobs <- find_ama(humans[[i]]) - find_ama(chimps[[i]])
+    
+    # specify lengths of arrays
+    n1 <- dim(humans[[i]])[3] 
+    n2 <- dim(chimps[[i]])[3] 
+    N <- n1 + n2 # total number of matrices 
+    #comibine data
+    alldata <- abind(humans[[i]], chimps[[i]])
+    
+    for(j in 1:nperms){ 
+      # random samples of the data
+      index <- sample(1:N, n1)
+  
+      # permuted groups
+      data1 <- alldata[,,index]
+      data2 <- alldata[,,-index]
+  
+      # calculate difference in AMAs
+      Dperm[j] <- find_ama(data1) - find_ama(data2)
+    }
+    # two-tailed p-value
+    pvalue <- sum(abs(Dperm) >= abs(Dobs))/nperms
+    hc_pvals[i] <- pvalue 
+}
+
+# print p-values for the 5 comparisons
+hc_pvals
+```
+
+### chimp vs baboon
+
+```{r}
+set.seed(17)
+# specify number of permutations
+nperms =  1000
+# empty vector for permutation test stats to be stored
+Dperm <- c()
+# vector to store p-values for human and chimp comparisons
+bc_pvals <- c()
+
+for (i in 1:length(baboons)){
+    Dobs <- find_ama(baboons[[i]]) - find_ama(chimps[[i]])
+    
+    # specify lengths of arrays
+    n1 <- dim(baboons[[i]])[3] 
+    n2 <- dim(chimps[[i]])[3] 
+    N <- n1 + n2 # total number of matrices 
+    #comibine data
+    alldata <- abind(baboons[[i]], chimps[[i]])
+    
+    for(j in 1:nperms){ 
+      # random samples of the data
+      index <- sample(1:N, n1)
+  
+      # permuted groups
+      data1 <- alldata[,,index]
+      data2 <- alldata[,,-index]
+  
+      # calculate difference in AMAs
+      Dperm[j] <- find_ama(data1) - find_ama(data2)
+    }
+    # two-tailed p-value
+    pvalue <- sum(abs(Dperm) >= abs(Dobs))/nperms
+    bc_pvals[i] <- pvalue 
+}
+
+# print p-values for the 4 comparisons
+bc_pvals
+```
+
+|                  | CubCal | TalCal | NavCub | NavTal | Mt5CubAP |
+|------------------|--------|--------|--------|--------|----------|
+| Human vs Baboon  | 0.279  | 0.677  | 0.365  | 0.345  | \-       |
+| Human vs. Chimp  | 0.920  | 0.238  | 0.565  | 0.576  | 0.239    |
+| Chimp vs. Baboon | 0.346  | 0.470  | 0.255  | 0.087  | \-       |

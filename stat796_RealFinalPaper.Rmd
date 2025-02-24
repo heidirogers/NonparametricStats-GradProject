@@ -1,0 +1,225 @@
+---
+title: "Stat 796 Final Paper"
+author: "Heidi Rogers"
+date: "2024-05-02"
+output:
+  pdf_document: default
+  html_document: default
+subtitle: Comparing Joint Data Between Species 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+### load packages
+library(MASS)
+library(boot)
+library(psych)
+library(abind)
+library(CircStats)
+library(ggplot2)
+library(latex2exp)
+library(gridExtra)
+library(patchwork)
+```
+
+## Introduction
+
+Rotation data can be used to describe the orientation of an object in Euclidian space. This paper in particular focuses on three-dimensional rotation data describing the orientation of foot joints in humans, chimpanzees, and baboons. Joint orientation data can be stored in 3x3 orthogonal rotation matrices containing information about rotation angles around the x, y, and z axes. The data used in this study was collected during circumduction, or the movement of a foot being flat on the floor and the leg rotating around it. Infrared emitting diodes (IREDs) attached to the joints gave the orientation of the bones during movement. Five joints in total were considered: the cuboid-calcaneus, navicular-cuboid, navicular-talus, talus-calcaneus, and the metatarsal-cuboid, all located in the ankle region. This orientation data was collected for six humans, four chimpanzees, and seven baboons which will be explored later to test if spread of joint orientation differs between species. All statistical analysis throughout this study was done in R version 4.2.1. We first look at the use of permutation tests for comparing a specific parameter between populations.
+
+## Permutation Tests
+
+A permutation test is a powerful statistical method used to check if a specified parameter is identical between two populations. This test does not rely on any assumptions about the underlying distributions of the data or a certain sample size, and can be used to test virtually any statistic of interest. In this case, the parameter that we are interested in is average misorientation angle (AMA). A misorientation angle is simply the smallest angle of rotation needed to get from one position to another. The AMA can be considered a measure of spread or level of dispersion in the case of multiple rotation matrices. We start with an array of multiple rotation matrices with each matrix representing a single observation. The AMA of this array can be calculated by finding the misorientation angle of each matrix to the mean matrix, and averaging these. The purpose of our permutation test is to see whether the AMAs of two different arrays of rotation matrices representing different populations are the same.
+
+To implement the test, we begin by calculating the observed statistic, difference in AMAs between samples, obtained by subtracting the AMA of one sample from the other. Then for each permutation, all data points of both samples are randomly shuffled and put into a new order while keeping the values the same, creating two new data sets. A new test statistic is computed for the shuffled data by again subtracting AMAs. This process is repeated a large number of times, say 10,000, until we have a vector of that length of new permuted test statistics. The proportion of permuted test statistics that are equal to or more extreme than the observed test statistic becomes the p-value. This is used to determine whether there is enough evidence to conclude that AMAs are significantly different between the populations. If AMAs were the same, we would expect the difference to be close to zero every time. All test results in this study were assessed at a significance level of $\alpha$ = .05
+
+## Simulation Study
+
+Different features of a data set can contribute to the effectiveness of these permutation tests, or how well it correctly identifies a true contrast between populations. This known as the power of the test. Sample size, data variability, and magnitude of the true population difference are some factors that alter the power of a permutation test. This simulation study assess the performance of permutation tests using data sets with varying sample sizes and parameters while testing their differences in AMAs. Samples were generated from the von Mises Uniform Axis Random Spin (vM-UARS) distribution and consist of 3x3 matrices which mimic the structure as the species data.
+
+In order to test the power of a permutation test, we run multiple iterations of the test, giving multiple p-values instead of just one. The proportion of p-values that conclude statistical significance (p-value\<.05) is the power of the test, representing how often the test gives the correct result. Because data was generated with spread values specified to not be the same, we know for certain that the samples have different spreads and the test should be detecting a that distinction.
+
+If power is calculated for several different variations of the test, a power curve can be plotted across those variations to see their impact on performance. For this simulation, we will look at comparing two samples, 12 different times, each time with the samples having different combinations of sample size and concentration parameters, *n* and $\kappa$, respectively. Four power graphs are displayed below in figures 1, 2, 3, and 4 showing the power of a permutation test to detect a difference in spreads versus the true difference in population spreads. Each plot represents a single population 1 spread value, $\kappa_1$, paired with multiple population two spread values, $\kappa_2$values, for different sample sizes, *n*. The x-axes represent the difference in true population spreads.
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+# read all data
+power_k1_5 <- read.table("power_k1_5_copy")
+power_k1_20 <- read.table("power_k1_20_copy")
+power_k1_50 <- read.table("power_k1_50_copy")
+power_k1_100 <- read.table("power_k1_100_copy")
+
+# specifiy differences
+kdiffs <- seq(0, 500, by=20)
+
+# Convert kdiffs to a data frame
+df <- data.frame(x = kdiffs)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+### PLOT 1
+
+# Create smooth lines
+smooth_line_1 <- smooth.spline(kdiffs, as.numeric(power_k1_5[1,]))
+df_smooth_1 <- data.frame(x = smooth_line_1$x, y = smooth_line_1$y)
+
+smooth_line_2 <- smooth.spline(kdiffs, as.numeric(power_k1_5[2,]))
+df_smooth_2 <- data.frame(x = smooth_line_2$x, y = smooth_line_2$y)
+
+smooth_line_3 <- smooth.spline(kdiffs, as.numeric(power_k1_5[3,]))
+df_smooth_3 <- data.frame(x = smooth_line_3$x, y = smooth_line_3$y)
+
+p5 <- ggplot() +
+  geom_line(data = df_smooth_1, aes(x = x, y = y, linetype = "n = 10"), color = "orange") +
+  geom_line(data = df_smooth_2, aes(x = x, y = y, linetype = "n = 50"), color = "deepskyblue3") +
+  geom_line(data = df_smooth_3, aes(x = x, y = y, linetype = "n = 100"), color = "red") +
+  ylim(0, 1.01) +
+  labs(x = TeX(r'($\kappa_2 - \kappa_1$)'), y = "Power",
+       title = "Power of Permutation Testing for Difference in AMAs",
+       subtitle =  TeX(r'($\kappa_1 = 5$)'),
+       caption = TeX(r'(Figure 1: Effects of sample size, variability, and true difference in spread on power, $\kappa_1 = 5.$)')) +
+  theme_bw() +
+    scale_linetype_manual(values = c("solid", "dashed", "dotted"),
+                        breaks = c("n = 10", "n = 50", "n = 100"),
+                        name = "Sample Size") +
+  theme(legend.position = c(0.95, 0.05),  # Position legend in bottom right
+        legend.justification = c(1, 0),  # Justify legend to bottom right
+        legend.box.just = "right",  
+        legend.box.background = element_rect(color = "black", size = 0.5),
+        legend.key.width = unit(0.5, "cm"),  # Set width of legend key
+        legend.key.height = unit(0.5, "cm"),
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5),
+        )
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+### PLOT 2
+
+# Create smooth lines
+smooth_line_1 <- smooth.spline(kdiffs, as.numeric(power_k1_20[1,]))
+df_smooth_1 <- data.frame(x = smooth_line_1$x, y = smooth_line_1$y)
+
+smooth_line_2 <- smooth.spline(kdiffs, as.numeric(power_k1_20[2,]))
+df_smooth_2 <- data.frame(x = smooth_line_2$x, y = smooth_line_2$y)
+
+smooth_line_3 <- smooth.spline(kdiffs, as.numeric(power_k1_20[3,]))
+df_smooth_3 <- data.frame(x = smooth_line_3$x, y = smooth_line_3$y)
+
+p20 <- ggplot() +
+  geom_line(data = df_smooth_1, aes(x = x, y = y, linetype = "n = 10"), color = "orange") +
+  geom_line(data = df_smooth_2, aes(x = x, y = y, linetype = "n = 50"), color = "deepskyblue3") +
+  geom_line(data = df_smooth_3, aes(x = x, y = y, linetype = "n = 100"), color = "red") +
+  ylim(0, 1.01) +
+  labs(x = TeX(r'($\kappa_2 - \kappa_1$)'), y = "Power",
+       title = "Power of Permutation Testing for Difference in AMAs",
+       subtitle = TeX(r'($\kappa_1 = 20$)'),
+       caption = TeX(r'(Figure 2: Effects of sample size, variability, and true difference in spread on power, $\kappa_1 = 20.$)')) +
+  theme_bw() +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted"),
+                        breaks = c("n = 10", "n = 50", "n = 100"),
+                        name = "Sample Size") +
+  theme(legend.position = c(0.95, 0.05),  # Position legend in bottom right
+        legend.justification = c(1, 0),  # Justify legend to bottom right
+        legend.box.just = "right",  
+        legend.box.background = element_rect(color = "black", size = 0.5),
+        legend.key.width = unit(0.5, "cm"),  # Set width of legend key
+        legend.key.height = unit(0.5, "cm"),
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+### PLOT 3
+
+# Create smooth lines
+smooth_line_1 <- smooth.spline(kdiffs, as.numeric(power_k1_50[1,]))
+df_smooth_1 <- data.frame(x = smooth_line_1$x, y = smooth_line_1$y)
+
+smooth_line_2 <- smooth.spline(kdiffs, as.numeric(power_k1_50[2,]))
+df_smooth_2 <- data.frame(x = smooth_line_2$x, y = smooth_line_2$y)
+
+smooth_line_3 <- smooth.spline(kdiffs, as.numeric(power_k1_50[3,]))
+df_smooth_3 <- data.frame(x = smooth_line_3$x, y = smooth_line_3$y)
+
+p50 <- ggplot() +
+  geom_line(data = df_smooth_1, aes(x = x, y = y, linetype = "n = 10"), color = "orange") +
+  geom_line(data = df_smooth_2, aes(x = x, y = y, linetype = "n = 50"), color = "deepskyblue3") +
+  geom_line(data = df_smooth_3, aes(x = x, y = y, linetype = "n = 100"), color = "red") +
+  ylim(0, 1.01) +
+  labs(x = TeX(r'($\kappa_2 - \kappa_1$)'), y = "Power",
+       title = "Power of Permutation Testing for Difference in AMAs",
+       subtitle = TeX(r'($\kappa_1 = 50$)'),
+       caption = TeX(r'(Figure 3: Effects of sample size, variability, and true difference in spread on power, $\kappa_1 = 50.$)')) +
+  theme_bw() +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted"),
+                        breaks = c("n = 10", "n = 50", "n = 100"),
+                        name = "Sample Size") +
+  theme(legend.position = c(0.95, 0.05),  # Position legend in bottom right
+        legend.justification = c(1, 0),  # Justify legend to bottom right
+        legend.box.just = "right",  
+        legend.box.background = element_rect(color = "black", size = 0.5),
+        legend.key.width = unit(0.5, "cm"),  # Set width of legend key
+        legend.key.height = unit(0.5, "cm"),
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+### PLOT 4
+
+# Create smooth lines
+smooth_line_1 <- smooth.spline(kdiffs, as.numeric(power_k1_100[1,]))
+df_smooth_1 <- data.frame(x = smooth_line_1$x, y = smooth_line_1$y)
+
+smooth_line_2 <- smooth.spline(kdiffs, as.numeric(power_k1_100[2,]))
+df_smooth_2 <- data.frame(x = smooth_line_2$x, y = smooth_line_2$y)
+
+smooth_line_3 <- smooth.spline(kdiffs, as.numeric(power_k1_100[3,]))
+df_smooth_3 <- data.frame(x = smooth_line_3$x, y = smooth_line_3$y)
+
+p100 <- ggplot() +
+  geom_line(data = df_smooth_1, aes(x = x, y = y, linetype = "n = 10"), color = "orange") +
+  geom_line(data = df_smooth_2, aes(x = x, y = y, linetype = "n = 50"), color = "deepskyblue3") +
+  geom_line(data = df_smooth_3, aes(x = x, y = y, linetype = "n = 100"), color = "red") +
+  ylim(0, 1.01) +
+  labs(x = TeX(r'($\kappa_2 - \kappa_1$)'), y = "Power",
+       title = "Power of Permutation Testing for Difference in AMAs",
+       subtitle = TeX(r'($\kappa_1 = 100$)'),
+       caption = TeX(r'(Figure 4: Effects of sample size, variability, and true difference in spread on power, $\kappa_1 = 100.$)')) +
+  theme_bw() +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted"),
+                        breaks = c("n = 10", "n = 50", "n = 100"),
+                        name = "Sample Size") +
+  theme(legend.position = c(0.95, 0.05),  # Position legend in bottom right
+        legend.justification = c(1, 0),  # Justify legend to bottom right
+        legend.box.just = "right",  
+        legend.box.background = element_rect(color = "black", size = 0.5),
+        legend.key.width = unit(0.5, "cm"),  # Set width of legend key
+        legend.key.height = unit(0.5, "cm"),
+        plot.title = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5))
+
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.height=4, fig.width=6, fig.align='center'}
+### display all plots
+p5; p20; p50;p100
+```
+
+As the true difference in population spreads increase, the power of the test also increases. This is expected since the increase indicates greater evidence that they are not the same. The power of the test also increases as sample size increases. A larger sample size increases the precision and sensitivity as well as decreases the overall sampling error, and the test is more likely accurately detect differences. Between the the four graphs, the power also reaches one quicker for all sample sizes when $\kappa_1$ is smaller. We would anticipate this to be the case since $\kappa_1$ represents spread of sample one, and a smaller variability provides more accurate results when comparing it to the second sample due to decreased random fluctuation of data. We can see this, as well as sample size, to be very influential factors, as exemplified in figure 4. Due to the small sample size and large variability, power at n = 10 fails to reach 75% even when true difference between population spreads is 500.
+
+## Species Joint Data
+
+To integrate the three-dimensional rotation data, we apply permutation tests to investigate differences between humans and baboons, humans and chimps, and baboons to chimps. Permutation tests are effective here due to them being robust against the small sample sizes of 4, 6, and 7. Additionally, a permutation test does not rely on specific data distributions making it suitable for this complex data set. The goal is to discover whether these species differ in terms of joint orientation utilizing AMA as the test statistic for 5 different ankle joints. Baboons do not have a metatarsal-cuboid, therefore this joint can only be compared between humans and chimps. Overall, 13 permutation tests are conducted for the 13 possible comparisons. The resulting p-values are reported in table 1.
+
+| Comparison       | Cuboid-Calcaneus | Talus-Calcaneus | Navicular-Cuboid | Navicular-Talus | Metatarsal-Cuboid |
+|------------------|------------------|-----------------|------------------|-----------------|-------------------|
+| Human vs. Baboon | 0.279            | 0.677           | 0.365            | 0.345           | \-                |
+| Human vs. Chimp  | 0.920            | 0.238           | 0.565            | 0.576           | 0.239             |
+| Chimp vs. Baboon | 0.346            | 0.470           | 0.255            | 0.087           | \-                |
+
+: P-values resulting from permutation tests for difference in AMAs.
+
+None of the comparisons were statistically significant and we have no evidence to conclude that spread (AMA) of joint orientation is significantly different between any of the three species for any of the five joints (p-values \> .05). This means that variability of joint orientation within each species is roughly the same across species. These tests cannot conclude anything about the average joint orientation between humans, chimps, and baboons, but could be tested for using the same permutation technique. It is important to keep in mind the results from the simulation study that small sample sizes tend to decrease the power of our test and it would be beneficial to repeat these tests with more observations to confirm the results.
