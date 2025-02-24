@@ -4,6 +4,8 @@ This project aims to test whether ankle joint bone orientation differs significa
 The small data set calls for nonparametrics methods including permutation tests and simulation.
 This project was completed in four steps, each building upon each other, and noted by check-in number.
 
+The final paper pdf contains the final narrative giving background, methods, and a final conclusion along with supporting graphics.
+
 ### Check-in 1:
 Creating a function that identifies the "mean" matrix of an array of matrices, and a funcion that identifies the average misorientation angle among the same array of matrices.
 
