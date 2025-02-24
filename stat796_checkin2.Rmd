@@ -1,0 +1,210 @@
+---
+title: "Stat 795 Check-in 2"
+author: "Heidi Rogers"
+date: "2024-02-05"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+```
+
+## Part 1: Bootstrapping
+
+```{r, warning=FALSE, message=FALSE}
+## PROBLEM 1
+
+boot1 <- read.csv("Boot1.csv")
+
+set.seed(100)
+bootstrap1 <- c()
+nsamples <- 1000
+
+for(i in 1:nsamples){
+  # sample from boot1
+  current_sample <- sample(boot1$GammaData, replace=TRUE)
+  # calculate standard deviation of the sample and add it to bootstrap vector
+  bootstrap1[i] <- sd(current_sample)
+}
+
+# 95% confidence interval for population standard deviation
+quantile(bootstrap1, probs=c(.025,.975))
+```
+
+```{r, warning=FALSE, message=FALSE}
+## PROBLEM 2
+
+boot2 <- read.csv("Boot2.csv")
+
+set.seed(200)
+bootstrap2 <- c()
+nsamples <- 1000
+
+for(i in 1:nsamples){
+  # sample from boot2
+  current_sample <- sample(boot2$Data, replace=TRUE)
+  # calculate IQR of the sample and add it to bootstrap vector
+  q3 <- quantile(current_sample, probs = .75) # 75% quartile
+  q1 <- quantile(current_sample, probs = .25) # 25% quartile
+  bootstrap2[i] <- q3 - q1 
+}
+
+# 90% confidence interval for population IQR
+quantile(bootstrap2, probs=c(.05,.95))
+```
+
+```{r, warning=FALSE, message=FALSE}
+## PROBLEM 3
+
+boot3 <- read.csv("Boot3.csv")
+
+set.seed(300)
+bootstrap3 <- c()
+nsamples <- 1000
+
+for(i in 1:nsamples){
+  # sample from boot3
+  current_sample <- sample(boot3$Data, replace=TRUE)
+  # calculate median of the sample and add it to bootstrap vector
+  bootstrap3[i] <- median(current_sample)
+}
+
+# 99% confidence interval for population median
+quantile(bootstrap3, probs=c(.005,.995))
+```
+
+## Part 2: Permutation Tests
+
+```{r, warning=FALSE, message=FALSE}
+## PROBLEM 1
+
+perm1 <- read.csv("PermTest1.csv")
+set.seed(1000)
+
+# observed difference in sample medians
+med_obs <- median(perm1$Group1) - median(perm1$Group2) # -0.3
+
+# specify lengths of groups
+n1 <- length(perm1$Group1); n2 <- length(perm1$Group2)
+N <- n1 + n2 # total observations
+
+#comibine data
+alldata <- c(perm1$Group1, perm1$Group2)
+
+# initialize variables
+nperms = 1000
+all_med_perm <- c()
+p_val <- 0
+count <- 0
+
+# permute data and calculate difference in medians 1000 times
+for(i in 1:nperms){ 
+  # permute data
+  index = sample(1:N, n1)
+  data1 = alldata[index]
+  data2 = alldata[-index]
+  
+  # calculate difference in medians
+  med_perm <- median(data1) - median(data2)
+  all_med_perm[i] <- med_perm
+  
+  # for two-tailed p-value:
+  # count = number of times the absolute value of the sample difference 
+  # is >= absolute value of the observed difference
+  if(abs(med_perm) > abs(med_obs) | abs(med_perm) == abs(med_obs)){
+    count <- count + 1
+  }
+  # calculate p-value
+  p_val <- count / nperms
+}
+
+p_val #.341
+
+# histrogram of permuted statistisc
+ggplot() + 
+  geom_histogram(aes(x=all_med_perm), bins = 15, color="black", fill="lightblue") +
+  labs(x = "Difference in Median Between Groups", 
+       title="Distribution of 1000 Permuted Statistics", 
+       y = "Count") +
+  geom_vline(xintercept = med_obs, 
+             linetype = "solid", color = "red", size = .7) +
+  geom_text(aes(x=-.4, label = "Observed", y=200), color="red", angle=45) +
+  theme_minimal()
+
+```
+
+**Ho:** population medians are the same between groups (m1 - m2 = 0, where m1 = population median for group 1)
+
+**Ha:** population medians are different between group 1 and group 2 (m1 - m2 =/ 0)
+
+The observed difference in medians between the two groups is -0.3. The p-value for the 1000 permutations is .341 \> .05, therefore, we fail to reject the null and do not have enough evidence to say that the two groups have different population medians.
+
+```{r, warning=FALSE, message=FALSE}
+## PROBLEM 2
+
+perm2 <- read.csv("PermTest2.csv")
+set.seed(2000)
+
+# observed difference in 90th percentiles between groups
+p90_athlete <- quantile(na.omit(perm2$Athletes), probs = .90)
+p90_nonathlete <- quantile(perm2$NonAthletes, probs = .90)
+
+perc_obs <- p90_athlete - p90_nonathlete # 6.1
+
+# specify lengths of groups
+n1 <- length(na.omit(perm2$Athletes)); n2 <- length(perm2$NonAthletes)
+N <- n1 + n2 # total observations
+
+# comibine data
+alldata <- c(na.omit(perm2$Athletes), perm2$NonAthletes)
+
+# initialize variables
+nperms = 1000
+all_perc_perm <- c()
+p_val2 <- 0
+count2 <- 0
+
+# permute data and calculate difference in 90th percentiles 1000 times
+for(i in 1:nperms){ 
+  # permute data
+  index = sample(1:N, n1)
+  data1 = alldata[index]
+  data2 = alldata[-index]
+  
+  # calculate difference in 90th percentiles
+  perc_a <- quantile(data1, probs = .90) # 90th percentile for athletes
+  perc_na <- quantile(data2, probs = .90) # 90th percentile for non athletes
+  perc_perm <- perc_a - perc_na
+  all_perc_perm[i] <- perc_perm
+  
+  # for right-tailed p-value:
+  # count2 = number of times the sample difference is >= the observed difference
+  if(perc_perm > perc_obs | perc_perm == perc_obs){
+    count2 <- count2 + 1
+  }
+  # calculate p-value
+  p_val2 <- count2 / nperms
+}
+
+p_val2 # 0.04
+
+# histrogram of permuted statistisc
+ggplot() + 
+  geom_histogram(aes(x=all_perc_perm), bins = 15, color="black", fill="plum2") +
+  labs(x = "Difference in 90th Percentile Test Scores Between Athletes and Non-Athletes", 
+       title="Distribution of 1000 Permuted Statistics", 
+       y = "Count") +
+  geom_vline(xintercept = perc_obs, linetype = "solid", color = "blue", size = .7) +
+  geom_text(aes(x=5.1, label = "Observed", y=150), color="blue", angle=45) +
+  theme_minimal()
+```
+
+**Ho:** The 90th percentile of test scores is the same between athletes and non-athletes (p_a - p_na = 0, where p_a is the population 90th percentile score for athletes)
+
+**Ha:** The 90th percentile test score is greater for athletes than it is non-athletes (p_a - p_na \> 0)
+
+The observed difference in 90th percentile test score between the athletes and non-athletes is 6.1. The p-value for the 1000 permutations is .04 \< .05, therefore, we would reject the null and have enough evidence to conclude that athletes have a greater 90th percentile score on standardized tests than non-athletes in the population.
