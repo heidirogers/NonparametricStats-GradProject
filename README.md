@@ -5,13 +5,13 @@ The project was completed in four steps, each building upon each other, and iden
 #### Check-in 1:
 Creating a function that identifies the "mean" matrix of an array of matrices, and a funcion that identifies the average misorientation angle among the same array of matrices.
 
-#### Check-in 2
+#### Check-in 2:
 Testing and writing code for bootstrapping and permutation tests to test a hypothesis.
 
-#### Check-in 3
+#### Check-in 3:
 Combines the two functions from check-in 1 with a permutation test to test a hypothesis.
 
-#### Check-in 4 
+#### Check-in 4: 
 Uses the structure of check-in 3, adding in various hyperparameters to evaluate and plot the power of the permutation tests.
 
 ## Data 
